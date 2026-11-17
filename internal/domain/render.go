@@ -26,6 +26,7 @@ type Render struct {
 	RequestHash string            `json:"request_hash"`
 	Sheet       Sheet             `json:"sheet"`
 	Recipe      Recipe            `json:"recipe"`
+	Calibration *Calibration      `json:"calibration,omitempty"`
 	Sources     map[string]Source `json:"sources"`
 	Plan        Plan              `json:"plan"`
 	State       string            `json:"state"`
@@ -42,17 +43,18 @@ type Event struct {
 	At       time.Time `json:"at"`
 }
 type State struct {
-	Schema   int                 `json:"schema"`
-	Sequence uint64              `json:"sequence"`
-	Sources  map[string]Source   `json:"sources"`
-	Sheets   map[string][]Sheet  `json:"sheets"`
-	Recipes  map[string][]Recipe `json:"recipes"`
-	Renders  map[string]Render   `json:"renders"`
-	Events   []Event             `json:"events"`
+	Schema       int                      `json:"schema"`
+	Sequence     uint64                   `json:"sequence"`
+	Sources      map[string]Source        `json:"sources"`
+	Sheets       map[string][]Sheet       `json:"sheets"`
+	Recipes      map[string][]Recipe      `json:"recipes"`
+	Calibrations map[string][]Calibration `json:"calibrations"`
+	Renders      map[string]Render        `json:"renders"`
+	Events       []Event                  `json:"events"`
 }
 
 func Empty() State {
-	return State{Schema: 1, Sources: map[string]Source{}, Sheets: map[string][]Sheet{}, Recipes: map[string][]Recipe{}, Renders: map[string]Render{}, Events: []Event{}}
+	return State{Schema: 1, Sources: map[string]Source{}, Sheets: map[string][]Sheet{}, Recipes: map[string][]Recipe{}, Calibrations: map[string][]Calibration{}, Renders: map[string]Render{}, Events: []Event{}}
 }
 func (s *State) Emit(id, kind, detail string) {
 	s.Sequence++

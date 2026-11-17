@@ -39,6 +39,11 @@ func Open(root string) (*Store, error) {
 		err = nil
 	}
 	if err == nil {
+		if s.state.Calibrations == nil {
+			// State written before dual-camera calibration is migrated in place:
+			// no historical calibration exists, so an empty revision map is exact.
+			s.state.Calibrations = map[string][]domain.Calibration{}
+		}
 		err = domain.ValidateState(s.state)
 	}
 	if err != nil {

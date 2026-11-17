@@ -65,6 +65,16 @@ func (s *Service) RetireSource(id string) error {
 			if _, ok := r.Sources[id]; ok {
 				return domain.Conflict("source is retained by render lineage")
 			}
+			if r.Calibration != nil && (r.Calibration.MasterSourceID == id || r.Calibration.CameraSourceID == id) {
+				return domain.Conflict("source is retained by frozen calibration lineage")
+			}
+		}
+		for _, versions := range st.Calibrations {
+			for _, calibration := range versions {
+				if calibration.MasterSourceID == id || calibration.CameraSourceID == id {
+					return domain.Conflict("source is referenced by calibration history")
+				}
+			}
 		}
 		delete(st.Sources, id)
 		st.Emit(id, "source.retired", "content retained for conservative reclamation")

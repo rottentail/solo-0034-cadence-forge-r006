@@ -34,6 +34,9 @@ func ValidateSheet(s Sheet, sources map[string]Source) error {
 	if strings.TrimSpace(s.Name) == "" || len(s.Name) > 160 {
 		return Invalid("sheet name must contain 1..160 bytes")
 	}
+	if s.SyncID != "" || len(s.Shots) > 0 || len(s.Sound) > 0 {
+		return ValidateSyncedSheet(s, sources)
+	}
 	if len(s.Spans) == 0 || len(s.Spans) > 32 {
 		return Invalid("a sheet requires 1..32 spans")
 	}
@@ -68,14 +71,14 @@ func ValidateSheet(s Sheet, sources map[string]Source) error {
 		if c.StartMS < 0 || c.EndMS <= c.StartMS || c.EndMS > source.Media.DurationMS {
 			return Invalid("cue %d has invalid interval", i)
 		}
-		if !utf8.ValidString(c.Text) || strings.TrimSpace(c.Text) == "" || len(c.Text) > 2000 || strings.Contains(c.Text, "-->") || strings.ContainsAny(c.Text, "\x00\r") {
+		if !validCueText(c.Text) || !utf8.ValidString(c.Text) {
 			return Invalid("cue %d has invalid text", i)
 		}
 	}
 	return nil
 }
 func ValidateState(s State) error {
-	if s.Schema != 1 || s.Sources == nil || s.Sheets == nil || s.Recipes == nil || s.Renders == nil {
+	if s.Schema != 1 || s.Sources == nil || s.Sheets == nil || s.Recipes == nil || s.Calibrations == nil || s.Renders == nil {
 		return fmt.Errorf("unsupported or incomplete state schema")
 	}
 	for id, source := range s.Sources {
@@ -109,6 +112,19 @@ func ValidateState(s State) error {
 			}
 		}
 	}
+	for id, versions := range s.Calibrations {
+		if len(versions) == 0 {
+			return fmt.Errorf("empty calibration history")
+		}
+		for i, v := range versions {
+			if v.ID != id || v.Revision != i+1 {
+				return fmt.Errorf("invalid calibration history")
+			}
+			if err := ValidateCalibration(v, s.Sources); err != nil {
+				return err
+			}
+		}
+	}
 	keys := map[string]bool{}
 	for id, r := range s.Renders {
 		if id != r.ID || keys[r.Key] {
@@ -131,6 +147,16 @@ func ValidateState(s State) error {
 		}
 		if err := ValidateRecipe(r.Recipe); err != nil {
 			return err
+		}
+		if r.Calibration != nil {
+			if err := ValidateCalibration(*r.Calibration, r.Sources); err != nil {
+				return err
+			}
+			if err := ValidateProgramAgainstCalibration(r.Sheet, *r.Calibration, r.Sources); err != nil {
+				return err
+			}
+		} else if r.Sheet.SyncID != "" || len(r.Sheet.Shots) > 0 || len(r.Sheet.Sound) > 0 {
+			return fmt.Errorf("synced render is missing its frozen calibration")
 		}
 	}
 	var previous uint64

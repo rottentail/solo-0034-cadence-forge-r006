@@ -28,6 +28,11 @@
       "timeout_seconds": 120
     },
     {
+      "workflow_id": "calibration-version",
+      "command": "python3 scripts/sync_check.py --workflow dual-camera",
+      "timeout_seconds": 600
+    },
+    {
       "workflow_id": "preview",
       "command": "python3 scripts/workflow_check.py --workflow preview",
       "timeout_seconds": 120
@@ -101,6 +106,11 @@
       "workflow_id": "events",
       "command": "python3 scripts/workflow_check.py --workflow events",
       "timeout_seconds": 120
+    },
+    {
+      "workflow_id": "dual-camera-sync",
+      "command": "python3 scripts/sync_check.py --workflow dual-camera",
+      "timeout_seconds": 600
     }
   ]
 }

@@ -38,6 +38,11 @@
       "path": "internal/timeline"
     },
     {
+      "id": "synchronization",
+      "name": "双机位时钟对应与自然速度取舍",
+      "path": "internal/sync"
+    },
+    {
       "id": "captions",
       "name": "源字幕到成片字幕映射",
       "path": "internal/caption"
@@ -117,6 +122,26 @@
         "journal"
       ],
       "verification": "python3 scripts/workflow_check.py --workflow sheet-version"
+    },
+    {
+      "id": "calibration-version",
+      "name": "calibration-version",
+      "entry": "POST/PUT /forge/v1/calibrations",
+      "success": "新校准修订与ETag",
+      "failure": "锚点不推进或同源校准被拒、过期If-Match返回409",
+      "steps": [
+        "入口解码与领域事实读取",
+        "确认的同事件前后锚点构成不可变修订且必须落在两段素材时长内",
+        "新校准修订与ETag"
+      ],
+      "module_ids": [
+        "http",
+        "application",
+        "domain",
+        "journal",
+        "synchronization"
+      ],
+      "verification": "python3 scripts/sync_check.py --workflow dual-camera"
     },
     {
       "id": "preview",
@@ -424,30 +449,57 @@
         "journal"
       ],
       "verification": "python3 scripts/workflow_check.py --workflow events"
+    },
+    {
+      "id": "dual-camera-sync",
+      "name": "dual-camera-sync",
+      "entry": "POST /forge/v1/renders with explicit calibration revision",
+      "success": "共享对应关系的音画成片、锚点精确与残差量测",
+      "failure": "未确认锚点、越界节目或声明精确却被量测否证时拒绝",
+      "steps": [
+        "入口解码与领域事实读取",
+        "画面选择与连续声音编排各自可编辑但同源对应关系只构建一次",
+        "自然速度跳接的可测残差与逐锚点精确性",
+        "成片锚点、字幕与交付说明互相对得上"
+      ],
+      "module_ids": [
+        "http",
+        "application",
+        "timeline",
+        "synchronization",
+        "captions",
+        "encoding",
+        "inspection",
+        "objects",
+        "journal"
+      ],
+      "verification": "python3 scripts/sync_check.py --workflow dual-camera"
     }
   ],
   "complexity": {
     "mechanisms": [
-      "state_machine",
-      "resource_lifecycle",
-      "error_propagation",
-      "concurrency",
-      "versioning_audit",
-      "recovery_rollback",
-      "export_freeze",
-      "time_semantics",
       "capacity",
+      "concurrency",
+      "error_propagation",
+      "export_freeze",
       "idempotency",
-      "policy_rules",
       "lineage",
-      "snapshot_consistency"
+      "natural_speed_tradeoff",
+      "policy_rules",
+      "recovery_rollback",
+      "resource_lifecycle",
+      "snapshot_consistency",
+      "state_machine",
+      "time_semantics",
+      "versioning_audit"
     ],
     "evidence": {
       "concurrency": "internal/service/worker.go:claim, completeLocked",
       "recovery_rollback": "internal/journal/recovery.go:Recover",
-      "time_semantics": "internal/timeline/plan.go:Build; internal/caption/map.go:Map",
+      "time_semantics": "internal/sync/timeline.go:Build; internal/timeline/plan.go:buildSynced; internal/caption/map.go:mapSynced",
       "idempotency": "internal/service/submit.go:Submit",
-      "snapshot_consistency": "internal/service/submit.go:Submit; internal/journal/store.go:Update"
+      "snapshot_consistency": "internal/service/submit.go:Submit; internal/journal/store.go:Update",
+      "natural_speed_tradeoff": "internal/sync/timeline.go:Build; internal/timeline/plan.go:buildSynced"
     }
   }
 }

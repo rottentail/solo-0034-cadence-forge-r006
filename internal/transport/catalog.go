@@ -91,13 +91,46 @@ func (a API) recipe(w http.ResponseWriter, r *http.Request) {
 	write(w, 201, v)
 }
 func (a API) preview(w http.ResponseWriter, r *http.Request) {
-	v, err := a.Service.Preview(r.PathValue("id"), r.URL.Query().Get("recipe_id"))
+	v, err := a.Service.Preview(r.PathValue("id"), r.URL.Query().Get("recipe_id"), r.URL.Query().Get("calibration_id"))
 	if err != nil {
 		failure(w, err)
 		return
 	}
 	write(w, 200, v)
 }
+func (a API) calibration(w http.ResponseWriter, r *http.Request) {
+	var input domain.Calibration
+	if err := decode(w, r, &input); err != nil {
+		failure(w, err)
+		return
+	}
+	rev, err := expected(r)
+	if err != nil {
+		failure(w, err)
+		return
+	}
+	v, err := a.Service.SaveCalibration(r.PathValue("id"), rev, input)
+	if err != nil {
+		failure(w, err)
+		return
+	}
+	w.Header().Set("ETag", strconv.Itoa(v.Revision))
+	write(w, 201, v)
+}
+func (a API) calibrationView(w http.ResponseWriter, r *http.Request) {
+	st, err := a.Service.Store.Snapshot()
+	if err != nil {
+		failure(w, err)
+		return
+	}
+	versions := st.Calibrations[r.PathValue("id")]
+	if len(versions) == 0 {
+		failure(w, domain.Missing("calibration", r.PathValue("id")))
+		return
+	}
+	write(w, 200, versions[len(versions)-1])
+}
+
 func (a API) events(w http.ResponseWriter, r *http.Request) {
 	after := uint64(0)
 	if q := r.URL.Query().Get("after"); q != "" {

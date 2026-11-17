@@ -44,6 +44,19 @@ func Artifact(ctx context.Context, prober media.Prober, path string, r domain.Re
 	if r.Recipe.Format == "mp4" && (!m.Video || m.Width != r.Recipe.Width || m.Height != r.Recipe.Height) {
 		return domain.Inspection{}, fmt.Errorf("output video contract mismatch")
 	}
+	if r.Plan.Sync != nil {
+		// A synced deliverable must carry both the arranged picture and the
+		// continuous sound; a silently dropped track would still satisfy the
+		// generic container contract.
+		if r.Recipe.Format == "mp4" && (!m.Video || !m.Audio) {
+			return domain.Inspection{}, fmt.Errorf("synced output requires both picture and sound")
+		}
+		for _, span := range r.Plan.Sound {
+			if span.ProgramOutMS > r.Plan.ProgramStartMS+r.Plan.DurationMS || span.ProgramInMS < r.Plan.ProgramStartMS {
+				return domain.Inspection{}, fmt.Errorf("sound span lies outside the delivered program")
+			}
+		}
+	}
 	digest, n, err := Digest(path)
 	if err != nil {
 		return domain.Inspection{}, err
